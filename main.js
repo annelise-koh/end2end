@@ -177,16 +177,38 @@ function addToChatList(username) {
 function loadChat(username) {
     const messagesEl = document.getElementById('messages');
     messagesEl.innerHTML = '';
-    chatHistory[username].forEach((msg) => {
-        const item = document.createElement('li');
-        item.textContent = msg;
-        messagesEl.appendChild(item);
-    });
+    if (chatHistory[username]) {
+        chatHistory[username].forEach((msg) => {
+            const time = new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            const item = document.createElement('li');
+
+            // Format differently based on message direction
+            if (msg.direction === 'outgoing') {
+                item.textContent = `[${time}] You: ${msg.text}`;
+                item.classList.add('outgoing-message');
+            } else {
+                item.textContent = `[${time}] ${msg.from}: ${msg.text}`;
+                item.classList.add('incoming-message');
+            }
+            
+            messagesEl.appendChild(item);
+        });
+    }
+    window.scrollTo(0, document.body.scrollHeight);
 }
 
 form.addEventListener('submit', async function(e) {
     e.preventDefault();
-    if (!input.value) return;
+    if (!input.value || !recipientUsername) return;
+
+    if (!receiverPublicKey) {
+        try {
+            receiverPublicKey = await getPublicKeyForUser(recipientUsername);
+        } catch (err) {
+            alert("❌ Could not fetch recipient's public key.");
+            return;
+        }
+    }
 
     const plaintext = input.value;
 
@@ -204,6 +226,29 @@ form.addEventListener('submit', async function(e) {
     };
 
     const timestamp = new Date().toISOString();
+    const time = new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+    // Store the message in history with direction info
+    const messageData = {
+        text: plaintext,
+        timestamp,
+        direction: 'outgoing', // marks this as a sent message
+        from: myUsername,
+        to: recipientUsername
+    };
+
+    // Initialize chat if needed
+    if (!chatHistory[recipientUsername]) {
+        addToChatList(recipientUsername);
+        chatHistory[recipientUsername] = [];
+    }
+    chatHistory[recipientUsername].push(messageData);
+
+    // Update the UI
+    if (currentChat !== recipientUsername) {
+        currentChat = recipientUsername;
+    }
+    loadChat(recipientUsername);
     
     socket.emit('chat message', {
         to: recipientUsername,
@@ -227,14 +272,36 @@ socket.on('chat message', async function(data) {
     const aesKey = await decryptAESKey(encryptedAESKey, myKeyPair.privateKey);
     const message = await decryptMessage(encryptedMessage, aesKey, iv);
 
+    // Store the message with direction info
+    const messageData = {
+        text: message,
+        timestamp: data.timestamp,
+        direction: 'incoming', // marks this as a received message
+        from: data.from,
+        to: myUsername
+    };
+
     // Format the timestamp
-    const time = new Date(data.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    const messageString = `[${time}] ${data.from}: ${message}`;
+    // // const time = new Date(data.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    // const messageString = `[${time}] ${data.from}: ${message}`;
 
-    // Save to history
-    if (!chatHistory[data.from]) addToChatList(data.from);
-    chatHistory[data.from].push(messageString);
+    // // Save to history
+    // if (!chatHistory[data.from]) addToChatList(data.from);
+    // chatHistory[data.from].push(messageString);
 
+    // if (currentChat === data.from || currentChat === null) {
+    //     currentChat = data.from;
+    //     loadChat(data.from);
+    // }
+
+    // Initialize chat if needed
+    if (!chatHistory[data.from]) {
+        addToChatList(data.from);
+        chatHistory[data.from] = [];
+    }
+    chatHistory[data.from].push(messageData);
+
+    // Update UI if we're viewing this chat
     if (currentChat === data.from || currentChat === null) {
         currentChat = data.from;
         loadChat(data.from);
