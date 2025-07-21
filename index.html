@@ -8,6 +8,11 @@
             padding-bottom: 3rem;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
         }
+        #auth-container {
+            padding: 20px;
+            margin-left: 30px;
+            left: 10px;
+        }
 
         .outgoing-message {
             color: blue;
@@ -99,7 +104,7 @@
         }
 
         #form input, #form button {
-            margin-right: 0.5rem;
+            margin-right: 1rem;
         }
 
         #messages > li { padding: 0.5rem 1rem; }
@@ -108,18 +113,32 @@
   </head>
   <body>
 
-    <div id="chat-container">
-        <div id="chat-list">
-          <!-- List of users you’ve chatted with -->
+    <div id="main-container">
+        <div id="auth-container">
+            <h2>Welcome!</h2>
+            <input type="text" id="username" placeholder="Username" required>
+            <br>
+            <input type="password" id="password" placeholder="Password" required>
+            <div class="auth-buttons">
+                <button id="register-btn">Register</button>
+                <button id="login-btn">Login</button>
+            </div>
+            <div id="auth-error" class="error-message"></div>
         </div>
-        <div id="chat-window">
-            <ul id="messages"></ul>
-            <form id="form" action="">
-                <label for="recipient">Message to:</label>
-                <input id="recipient" list="users" placeholder="Enter username" autocomplete="off" />
-                <datalist id="users"></datalist>
-                <input id="input" name="message" autocomplete="off" /><button>Send</button>
-            </form>
+        <div id="chat-container" style="display: none;">
+            <div id="chat-list">
+                <h2>My Chats</h2>
+                <!-- List of users you’ve chatted with -->
+              </div>
+              <div id="chat-window">
+                  <ul id="messages"></ul>
+                  <form id="form" action="">
+                      <label for="recipient">Message to:</label>
+                      <input id="recipient" list="users" placeholder="Enter username" autocomplete="off" />
+                      <datalist id="users"></datalist>
+                      <input id="input" name="message" autocomplete="off" /><button>Send</button>
+                  </form>
+              </div>
         </div>
     </div>
     <script src="/socket.io/socket.io.js"></script>

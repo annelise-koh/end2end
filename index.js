@@ -5,6 +5,8 @@ const server = http.createServer(app);
 const { Server } = require("socket.io");
 const io = new Server(server);
 const userPublicKeys = {};
+const users = {};
+
 const userSockets = {};
 app.use(express.static(__dirname));
 
@@ -25,12 +27,50 @@ io.on('connection', (socket) => {
             }
         }
     });
-
-    socket.on("register user", ({ username, ecdhPublicKey, signature, ed25519PublicKey }) => {
-        socket.username = username;
-        userPublicKeys[username] = { ecdhPublicKey, signature, ed25519PublicKey };
-        userSockets[username] = socket;
+    // Register a new user account with username + password + keys
+    socket.on('register', async ({ username, password, ecdhPublicKey, signature, ed25519PublicKey }, callback) => {
+        if (users[username]) {
+            callback({ success: false, message: 'Username already taken' });
+            return;
+        }
+        users[username] = { password, ecdhPublicKey, signature, ed25519PublicKey };
+        
+        callback({ success: true, message: 'Registered successfully' });
         console.log(`✅ Registered ${username}`);
+    });
+
+    socket.on("register keys", ({ username, ecdhPublicKey, signature, ed25519PublicKey }) => {
+        socket.username = username;
+        userPublicKeys[username] = { 
+            ecdhPublicKey, 
+            signature, 
+            ed25519PublicKey 
+        };
+        userSockets[username] = socket;
+        console.log(`✅ Updated keys for ${username}`);
+    });
+
+    // Login with username + password
+    socket.on('login', ({ username, password }, callback) => {
+        const user = users[username];
+        if (!user) {
+            callback({ success: false, message: 'User does not exist' });
+            return;
+        }
+        if (user.password !== password) {
+            callback({ success: false, message: 'Incorrect password' });
+            return;
+        }
+        // Save user's socket and keys on login
+        socket.username = username;
+        userSockets[username] = socket;
+        userPublicKeys[username] = {
+            ecdhPublicKey: user.ecdhPublicKey,
+            signature: user.signature,
+            ed25519PublicKey: user.ed25519PublicKey
+        };
+        callback({ success: true, message: 'Login successful' });
+        console.log(`User logged in: ${username}`);
     });
 
     socket.on("get public key bundle", (targetUsername, callback) => {
@@ -49,15 +89,19 @@ io.on('connection', (socket) => {
         callback(Object.keys(userSockets)); // `users` is a map of username → publicKey
     });
 
-    socket.on('chat message', ({ to, from, timestamp, payload }) => {
-        console.log(`message to ${to}:`, payload);
+    socket.on('chat message', ({ from, to, timestamp, encryptedMessage, encryptedAESKey, iv, signature }) => {
+        console.log(`${timestamp} message to ${to}:`, encryptedMessage);
         const recipientSocket = userSockets[to];
         if (recipientSocket) {
             // Forward the message to the recipient only
             recipientSocket.emit('chat message', {
-                from: from,
-                timestamp: timestamp,
-                payload: payload
+                from,
+                to,
+                timestamp,
+                encryptedMessage,
+                encryptedAESKey,
+                iv,
+                signature
             });
         } else {
             console.log(`User ${to} not connected.`);
