@@ -5,61 +5,113 @@ var form = document.getElementById('form');
 var input = document.getElementById('input');
 var messages = document.getElementById('messages');
 
-let myKeyPair;
-let receiverPublicKey; // placeholder for the recipient’s public key
-// let myUsername = prompt("Enter your username:");
+let receiverPublicKey;
 let myUsername;
 let recipientUsername;
+let myECDHKeyPair;
+let mySigningKeyPair;
 
 const chatList = document.getElementById('chat-list');
 const chatHistory = {}; // key = username, value = array of messages
 let currentChat = null;
 
-// Call it as soon as the page loads
-// generateKeyPair();
+// Track connection state
+let isConnected = false;
 socket.on('connect', () => {
-    console.log("Socket connected! Prompting for username...");
+    console.log("Socket connected!");
+    isConnected = true;
+    handleConnection();
+});
+
+// Also handle case where connection is already established
+if (socket.connected) {
+    isConnected = true;
+    handleConnection();
+}
+
+// Call it as soon as the page loads
+async function handleConnection() {
+    console.log("Prompting for username...");
     myUsername = prompt("Enter your username:");
     if (!myUsername) {
         alert("Username is required. Reloading...");
         window.location.reload();
         return;
     }
-    generateKeyPair(); // Now safe to run
-});
+    try {
+        await generateKeyPairs();
+        const signedECDH = await signECDHPublicKey();
+        // Export Ed25519 public key to send for signature verification
+        const rawEdPub = await crypto.subtle.exportKey("raw", mySigningKeyPair.publicKey);
+        const ed25519PublicKey = btoa(String.fromCharCode(...new Uint8Array(rawEdPub)));
 
-
-// Generate key pair on load
-async function generateKeyPair() {
-    myKeyPair = await window.crypto.subtle.generateKey(
-    {
-        name: "RSA-OAEP",
-        modulusLength: 2048,
-        publicExponent: new Uint8Array([1, 0, 1]),
-        hash: "SHA-256",
-    },
-    true,
-    ["encrypt", "decrypt"]
-    );
-    console.log("Key pair generated!");
-
-    const exportedPublicKey = await exportPublicKey(myKeyPair.publicKey);
-
-    // Send your username + public key to the server
-    socket.emit("register user", {
-        username: myUsername,
-        publicKey: exportedPublicKey
-    });
-
-    socket.emit("get users", (userList) => {
-        const datalist = document.getElementById("users");
-        datalist.innerHTML = ""; // Clear old options
-        userList.forEach((username) => {
-            const option = document.createElement("option");
-            option.value = username;
-            datalist.appendChild(option);
+        socket.emit("register user", {
+            username: myUsername,
+            ecdhPublicKey: signedECDH.rawECDHPubKey,
+            signature: signedECDH.signature,
+            ed25519PublicKey
         });
-    });
+    } catch (err) {
+        console.error("Initialization failed:", err);
+        alert("Initialization error. Please reload.");
+        window.location.reload();
+    }
+};
+
+async function generateKeyPairs() {
+    // ECDH (key agreement)
+    myECDHKeyPair = await crypto.subtle.generateKey(
+        {
+            name: "ECDH",
+            namedCurve: "P-256"
+        },
+        true,
+        ["deriveKey", "deriveBits"]
+    );
+
+    // Ed25519 (signing)
+    mySigningKeyPair = await crypto.subtle.generateKey(
+        {
+            name: "Ed25519",
+        },
+        true,
+        ["sign", "verify"]
+    );
+}
+
+async function signECDHPublicKey() {
+    const rawPubKey = await crypto.subtle.exportKey("raw", myECDHKeyPair.publicKey);
+    const signature = await crypto.subtle.sign(
+        "Ed25519",
+        mySigningKeyPair.privateKey,
+        rawPubKey
+    );
+    return {
+        rawECDHPubKey: btoa(String.fromCharCode(...new Uint8Array(rawPubKey))),
+        signature: btoa(String.fromCharCode(...new Uint8Array(signature)))
+    };
+}
+
+async function verifyECDHPublicKey(peerECDHPubBase64, peerSignatureBase64, peerVerifyKey) {
+    const rawECDHPub = Uint8Array.from(atob(peerECDHPubBase64), c => c.charCodeAt(0));
+    const signature = Uint8Array.from(atob(peerSignatureBase64), c => c.charCodeAt(0));
+
+    const valid = await crypto.subtle.verify(
+        "Ed25519",
+        peerVerifyKey,
+        signature,
+        rawECDHPub
+    );
+
+    if (!valid) throw new Error("ECDH key signature invalid");
+
+    return await crypto.subtle.importKey(
+        "raw",
+        rawECDHPub,
+        { name: "ECDH", namedCurve: "P-256" },
+        true,
+        []
+    );
 }
 
 const recipientInput = document.getElementById("recipient");
@@ -68,37 +120,36 @@ recipientInput.addEventListener("change", async () => {
     const name = recipientInput.value.trim();
     if (!name) return;
 
-    try {
-        receiverPublicKey = await getPublicKeyForUser(name);
-        recipientUsername = name;
-        console.log(`✅ Now messaging ${name}`);
-    } catch (err) {
-        alert("❌ Could not find that user.");
-    }
+    socket.emit("get public key bundle", name, async (data) => {
+        if (!data.success) {
+            alert("❌ Could not fetch recipient's keys.");
+            return;
+        }
+
+        // Import peer Ed25519 key
+        const rawVerifyKey = Uint8Array.from(atob(data.ed25519PublicKey), c => c.charCodeAt(0));
+        const peerVerifyKey = await crypto.subtle.importKey(
+            "raw",
+            rawVerifyKey,
+            { name: "Ed25519" },
+            true,
+            ["verify"]
+        );
+
+        // Verify and import peer ECDH public key
+        try {
+            receiverPublicKey = await verifyECDHPublicKey(data.ecdhPublicKey, data.signature, peerVerifyKey);
+            recipientUsername = name;
+            console.log(`✅ Now securely messaging ${name}`);
+        } catch (err) {
+            alert("❌ Could not verify recipient's public key.");
+        }
+    });
 });
 
 async function exportPublicKey(key) {
     const exported = await window.crypto.subtle.exportKey("spki", key);
     return btoa(String.fromCharCode(...new Uint8Array(exported)));
-}
-
-function getPublicKeyForUser(targetUsername) {
-    return new Promise((resolve, reject) => {
-        socket.emit('get public key', targetUsername, (response) => {
-        if (response.success) {
-            const keyBuffer = Uint8Array.from(atob(response.publicKey), c => c.charCodeAt(0));
-            crypto.subtle.importKey(
-            "spki",
-            keyBuffer,
-            { name: "RSA-OAEP", hash: "SHA-256" },
-            true,
-            ["encrypt"]
-            ).then(resolve).catch(reject);
-        } else {
-            reject("Public key not found");
-        }
-        });
-    });
 }
 
 // Before sending a message, encrypt it with a symmetric AES key
@@ -119,41 +170,6 @@ async function encryptMessage(plaintext) {
     );
 
     return { aesKey, iv, ciphertext };
-}
-// Encrypt the AES key with the receiver's public key
-async function encryptAESKey(aesKey, receiverPublicKey) {
-    const exportedAESKey = await crypto.subtle.exportKey("raw", aesKey);
-    const encryptedKey = await crypto.subtle.encrypt(
-        { name: "RSA-OAEP" },
-        receiverPublicKey,
-        exportedAESKey
-    );
-    return encryptedKey;
-}
-
-async function decryptAESKey(encryptedKey, myPrivateKey) {
-    const decrypted = await crypto.subtle.decrypt(
-        { name: "RSA-OAEP" },
-        myPrivateKey,
-        encryptedKey
-    );
-
-    return await crypto.subtle.importKey(
-        "raw",
-        decrypted,
-        { name: "AES-GCM" },
-        true,
-        ["decrypt"]
-    );
-    }
-
-    async function decryptMessage(ciphertext, aesKey, iv) {
-    const decrypted = await crypto.subtle.decrypt(
-        { name: "AES-GCM", iv },
-        aesKey,
-        ciphertext
-    );
-    return new TextDecoder().decode(decrypted);
 }
 
 // Add user to chat list (left side)
@@ -214,14 +230,38 @@ form.addEventListener('submit', async function(e) {
 
     // Step 1: Encrypt the message with AES
     const { aesKey, iv, ciphertext } = await encryptMessage(plaintext);
+    // AESKey was a raw CryptoKey, so it needs to be exported to ArrayBuffer
+    const encryptedAESKeyBuffer = await crypto.subtle.exportKey("raw", aesKey); 
+    
+    // Step 2: Get the shared ECDH-derived Key
+    const derivedKey = await crypto.subtle.deriveKey(
+        {
+            name: "ECDH",
+            public: receiverPublicKey
+        },
+        myECDHKeyPair.privateKey,
+        {
+            name: "AES-GCM",
+            length: 256
+        },
+        false,
+        ["encrypt", "decrypt"]
+    );
 
-    // Step 2: Encrypt the AES key with the receiver's RSA public key
-    const encryptedKey = await encryptAESKey(aesKey, receiverPublicKey);
+    // Step 3: Use the derived key to encrypted the AES key
+    const encryptedAESKey = await crypto.subtle.encrypt(
+        {
+            name: "AES-GCM",
+            iv: iv, // reuse the same IV or use a new one for this (ideally a separate one)
+        },
+        derivedKey,
+        encryptedAESKeyBuffer 
+    );
 
-    // Step 3: Convert ciphertext, key, iv to base64 for sending
+    // Step 4: Convert ciphertext and iv to base64 for sending
     const payload = {
         encryptedMessage: btoa(String.fromCharCode(...new Uint8Array(ciphertext))),
-        encryptedAESKey: btoa(String.fromCharCode(...new Uint8Array(encryptedKey))),
+        encryptedAESKey: btoa(String.fromCharCode(...new Uint8Array(encryptedAESKey))),
         iv: btoa(String.fromCharCode(...iv))
     };
 
@@ -265,47 +305,98 @@ form.addEventListener('submit', async function(e) {
 });
 
 socket.on('chat message', async function(data) {
-    const encryptedMessage = Uint8Array.from(atob(data.encryptedMessage), c => c.charCodeAt(0));
-    const encryptedAESKey = Uint8Array.from(atob(data.encryptedAESKey), c => c.charCodeAt(0));
-    const iv = Uint8Array.from(atob(data.iv), c => c.charCodeAt(0));
+    // Fetch and verify the sender's public key bundle
+    socket.emit("get public key bundle", data.from, async (bundle) => {
+        if (!bundle.success) {
+            console.error("Failed to get sender's key bundle");
+            return;
+        }
 
-    const aesKey = await decryptAESKey(encryptedAESKey, myKeyPair.privateKey);
-    const message = await decryptMessage(encryptedMessage, aesKey, iv);
+        try {
+            // Import their Ed25519 public key
+            const rawVerifyKey = Uint8Array.from(atob(bundle.ed25519PublicKey), c => c.charCodeAt(0));
+            const peerVerifyKey = await crypto.subtle.importKey(
+                "raw",
+                rawVerifyKey,
+                { name: "Ed25519" },
+                true,
+                ["verify"]
+            );
 
-    // Store the message with direction info
-    const messageData = {
-        text: message,
-        timestamp: data.timestamp,
-        direction: 'incoming', // marks this as a received message
-        from: data.from,
-        to: myUsername
-    };
+            // Verify and import ECDH key
+            const peerECDH = await verifyECDHPublicKey(bundle.ecdhPublicKey, bundle.signature, peerVerifyKey);
 
-    // Format the timestamp
-    // // const time = new Date(data.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    // const messageString = `[${time}] ${data.from}: ${message}`;
+            // Derive shared AES key using ECDH
+            const derivedKey = await crypto.subtle.deriveKey(
+                {
+                    name: "ECDH",
+                    public: peerECDH
+                },
+                myECDHKeyPair.privateKey,
+                {
+                    name: "AES-GCM",
+                    length: 256
+                },
+                false,
+                ["decrypt"]
+            );
 
-    // // Save to history
-    // if (!chatHistory[data.from]) addToChatList(data.from);
-    // chatHistory[data.from].push(messageString);
+            const encryptedAESKeyBytes = Uint8Array.from(atob(data.payload.encryptedAESKey), c => c.charCodeAt(0));
+            const iv = Uint8Array.from(atob(data.payload.iv), c => c.charCodeAt(0));
 
-    // if (currentChat === data.from || currentChat === null) {
-    //     currentChat = data.from;
-    //     loadChat(data.from);
-    // }
+            // Decrypt the AES key using the derived ECDH key
+            const decryptedAESKeyRaw = await crypto.subtle.decrypt(
+                { name: "AES-GCM", iv }, // same IV that was used to encrypt it
+                derivedKey,
+                encryptedAESKeyBytes
+            );
 
-    // Initialize chat if needed
-    if (!chatHistory[data.from]) {
-        addToChatList(data.from);
-        chatHistory[data.from] = [];
-    }
-    chatHistory[data.from].push(messageData);
+            // Import the decrypted AES key
+            const aesKey = await crypto.subtle.importKey(
+                "raw",
+                decryptedAESKeyRaw,
+                { name: "AES-GCM" },
+                false,
+                ["decrypt"]
+            );
 
-    // Update UI if we're viewing this chat
-    if (currentChat === data.from || currentChat === null) {
-        currentChat = data.from;
-        loadChat(data.from);
-    }
+            const encryptedMessage = Uint8Array.from(
+                atob(data.payload.encryptedMessage),
+                c => c.charCodeAt(0)
+            );            
 
-    window.scrollTo(0, document.body.scrollHeight);
+            // Decrypt the actual message using the AES key
+            const decrypted = await crypto.subtle.decrypt(
+                { name: "AES-GCM", iv },
+                aesKey,
+                encryptedMessage
+            );
+
+            const decoder = new TextDecoder();
+            const plaintext = decoder.decode(decrypted);
+
+            const messageData = {
+                text: plaintext,
+                timestamp: data.timestamp,
+                direction: 'incoming',
+                from: data.from,
+                to: myUsername
+            };
+
+            if (!chatHistory[data.from]) {
+                addToChatList(data.from);
+                chatHistory[data.from] = [];
+            }
+
+            chatHistory[data.from].push(messageData);
+
+            if (currentChat === data.from || currentChat === null) {
+                currentChat = data.from;
+                loadChat(data.from);
+            }
+
+        } catch (err) {
+            console.error("Failed to verify or decrypt message:", err);
+        }
+    });
 });
