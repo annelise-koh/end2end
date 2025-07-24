@@ -1,60 +1,93 @@
+console.log("✅ main.js loaded!");
 
-var socket = io();
+let socket = null;
 
 var form = document.getElementById('form');
 var input = document.getElementById('input');
 var messages = document.getElementById('messages');
 
-let receiverPublicKey;
+let receiverPublicKey; // ephemeral session data
+let myECDHKeyPair; // private keys never leave memory
+let mySigningKeyPair;
 let myUsername;
 let recipientUsername;
-let myECDHKeyPair;
-let mySigningKeyPair;
 
 const chatList = document.getElementById('chat-list');
 const chatHistory = {}; // key = username, value = array of messages
 const edPublicKeys = {};
 let currentChat = null;
 
-// Track connection state
-let isConnected = false;
-socket.on('connect', async () => {
-    console.log("Socket connected!");
-    isConnected = true;
-    await handleConnection();
+// When page loads
+document.addEventListener('DOMContentLoaded', () => {
+    console.log("DOM fully loaded");
+    checkAuthStatus();
 });
 
-// Also handle case where connection is already established
-if (socket.connected) {
-    isConnected = true;
-    handleConnection();
+async function checkAuthStatus() {
+    const token = sessionStorage.getItem('sessionToken') || getCookie('sessionToken');
+    if (token) {
+        // User might be already logged in
+        await initializeSocket(token);
+        document.getElementById("auth-container").style.display = "none";
+        document.getElementById("chat-container").style.display = "block";
+    } else {
+        // Show login form
+        document.getElementById("auth-container").style.display = "block";
+        setupAuthHandlers();
+    }
 }
 
-// Call it as soon as the page loads
-async function handleConnection() {
-    document.getElementById('register-btn').onclick = async () => {
-        await handleRegistration();
-        document.getElementById('auth-container').style.display = 'none';
-    };
-
-    document.getElementById('login-btn').onclick = async () => {
+function setupAuthHandlers() {
+    document.getElementById('login-btn').addEventListener('click', async (e) => {
+        e.preventDefault();
         await handleLogin();
-        document.getElementById('auth-container').style.display = 'none';
-    }
-};
+    });
+
+    document.getElementById('register-btn').addEventListener('click', async (e) => {
+        e.preventDefault();
+        await handleRegistration();
+    });
+}
 
 async function handleLogin() {
+    console.log('Handling login');
     const username = document.getElementById("username").value.trim();
     const password = document.getElementById("password").value;
+    const mfaToken = document.getElementById('mfaCode').value;
 
-    if (!username || !password) return alert("Username and password required");
+    if (!username || !password || !mfaToken) {
+        return alert("Username, password and MFA token required");
+    }
 
-    socket.emit('login', { username, password }, async (response) => {
-        if (response.success) {
+    try {
+        const response = await fetch('/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, password }),
+            credentials: 'include'
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            if (!data.success) {
+                return alert("Login failed");
+            }
+
+            const token = data.token;
+            if (!token) {
+                alert("Session token not found in response");
+                return;
+            }
+
+        // Store token temporarily for this session
+        sessionStorage.setItem('sessionToken', token);
+
+            // Initialize socket AFTER successful login
+            await initializeSocket(token);
             myUsername = username;
             alert("Login successful!");
 
-            // Generate key pairs and register your keys
+            // Generate and register keys
             await generateKeyPairs();
             const signedECDH = await signECDHPublicKey();
             const rawEdPub = await crypto.subtle.exportKey("raw", mySigningKeyPair.publicKey);
@@ -67,44 +100,287 @@ async function handleLogin() {
                 ed25519PublicKey
             });
 
-            // Hide auth UI, show chat UI
+            // Switch to chat interface
             document.getElementById("auth-container").style.display = "none";
             document.getElementById("chat-container").style.display = "block";
-
         } else {
-            alert("Login failed: " + response.message);
-            window.location.reload();
+            const data = await response.json();
+            alert('Login failed: ' + (data.error || 'Unknown error'));
         }
-    });
+    } catch (err) {
+        showError('Login error:' + err);
+    }
 }
 
 async function handleRegistration() {
+    console.log('Handling registration');
     const username = document.getElementById("username").value.trim();
     const password = document.getElementById("password").value;
 
-    if (!username || !password) return alert("Username and password required");
+    if (!username || !password) {
+        return alert("Username and password required");
+    }
 
-    await generateKeyPairs();
-    const signedECDH = await signECDHPublicKey();
-    const rawEdPub = await crypto.subtle.exportKey("raw", mySigningKeyPair.publicKey);
-    const ed25519PublicKey = btoa(String.fromCharCode(...new Uint8Array(rawEdPub)));
+    try {
+        const response = await fetch('/auth/register', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, password }),
+            credentials: 'include'
+        });
 
-    socket.emit('register', {
-        username,
-        password,
-        ecdhPublicKey: signedECDH.rawECDHPubKey,
-        signature: signedECDH.signature,
-        ed25519PublicKey
-    }, async (response) => {
-        if (response.success) {
-            alert("Registration successful!");
-            await handleLogin(); // Automatically log in
+        const data = await response.json();
+        
+        if (response.ok && data.qr) {
+            // Show MFA setup with QR code
+            showMfaSetup(data.qr);
+            // After MFA setup, call handleLogin()
+            // Store username for later use
+            document.getElementById("username").setAttribute('data-registering', 'true');
         } else {
-            alert("Registration failed: " + response.message);
+            alert("Registration failed: " + (data.message || data.error || 'Unknown error'));
         }
-    });
+    } catch (err) {
+        alert(err);
+    }
+}
+function showMfaSetup(qrCodeDataUrl) {
+    // Create or select an <img> element to show the QR code
+    const qrImg = document.getElementById('qrCode');
+    if (qrImg) {
+        qrImg.src = qrCodeDataUrl;
+        qrImg.style.display = 'block';
+    } else {
+        // Optionally create one if it doesn't exist
+        const img = document.createElement('img');
+        img.id = 'qrCode';
+        img.src = qrCodeDataUrl;
+        document.body.appendChild(img);
+    }
+
+    alert('Scan the QR code with your authenticator app');
+    document.getElementById('mfaVerification').style.display = 'block';
 }
 
+
+async function verifyMfa() {
+    const username = document.getElementById("username").value.trim();
+    const mfaCode = document.getElementById("mfaCode").value.trim();
+
+    if (!mfaCode) {
+        return alert("Please enter the MFA code");
+    }
+
+    try {
+        const response = await fetch('/auth/verify-mfa', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ username, token: mfaCode })
+        });
+
+        const data = await response.json();
+        if (response.ok) {
+            alert("MFA setup successful! You are now logged in.");
+            
+            const token = data.token;
+            if (!token) {
+                alert("Session token not found in response");
+                return;
+            }
+
+            // Store token temporarily for this session
+            sessionStorage.setItem('sessionToken', token);
+
+            // Initialize socket and proceed with login flow
+            await initializeSocket(token);
+            myUsername = username;
+
+            // Generate and register keys
+            await generateKeyPairs();
+            const signedECDH = await signECDHPublicKey();
+            const rawEdPub = await crypto.subtle.exportKey("raw", mySigningKeyPair.publicKey);
+            const ed25519PublicKey = btoa(String.fromCharCode(...new Uint8Array(rawEdPub)));
+
+            socket.emit("register keys", {
+                username,
+                ecdhPublicKey: signedECDH.rawECDHPubKey,
+                signature: signedECDH.signature,
+                ed25519PublicKey
+            });
+
+            // Switch to chat interface
+            document.getElementById("auth-container").style.display = "none";
+            document.getElementById("chat-container").style.display = "block";
+            
+            // Hide MFA verification UI
+            document.getElementById('mfaVerification').style.display = 'none';
+        } else {
+            alert("Invalid MFA code: " + (data.message || data.error || 'Unknown error'));
+        }
+    } catch (err) {
+        alert(err);
+    }
+}
+
+async function initializeSocket(token) {
+    // Close existing connection if any
+    if (socket) {
+        socket.disconnect();
+    }
+
+    socket = io("http://localhost:3001", {
+        withCredentials: true,
+        transports: ['websocket', 'polling'],
+        auth: { token } // Send token during handshake
+    });
+
+    // Set up socket event listeners
+    socket.on('connect', () => {
+        console.log('Socket connected');
+        isConnected = true;
+    });
+
+    socket.on('connect_error', (err) => {
+        console.error('Connection error:', err);
+        isConnected = false;
+    });
+
+    socket.on('disconnect', (reason) => {
+        console.warn('Disconnected:', reason);
+        isConnected = false;
+    });
+
+    // Set up your other socket listeners here
+    setupSocketListeners();
+}
+
+function setupSocketListeners() {
+    socket.on('chat message', async function(data) {
+        // Fetch and verify the sender's public key bundle
+        socket.emit("get public key bundle", data.from, async (bundle) => {
+            if (!bundle.success) {
+                console.error("Failed to get sender's key bundle");
+                return;
+            }
+    
+            try {
+                // Import their Ed25519 public key
+                const rawVerifyKey = Uint8Array.from(atob(bundle.ed25519PublicKey), c => c.charCodeAt(0));
+                const peerVerifyKey = await crypto.subtle.importKey(
+                    "raw",
+                    rawVerifyKey,
+                    { name: "Ed25519" },
+                    true,
+                    ["verify"]
+                );
+                // Verify signature
+                const reconstructedPayload = {
+                    from: data.from,
+                    to: data.to,
+                    timestamp: data.timestamp,
+                    encryptedMessage: data.encryptedMessage,
+                    encryptedAESKey: data.encryptedAESKey,
+                    iv: data.iv
+                };
+            
+                const payloadBytes = new TextEncoder().encode(JSON.stringify(reconstructedPayload));
+                const signatureBytes = new Uint8Array(data.signature);
+            
+                const isValid = await crypto.subtle.verify(
+                    "Ed25519",
+                    peerVerifyKey,
+                    signatureBytes,
+                    payloadBytes
+                );
+            
+                if (!isValid) {
+                    console.error("⚠️ Message signature invalid! Possible forgery.");
+                    return;
+                }
+    
+                // Verify and import ECDH key
+                const peerECDH = await verifyECDHPublicKey(bundle.ecdhPublicKey, bundle.signature, peerVerifyKey);
+    
+                // Derive shared AES key using ECDH
+                const derivedKey = await crypto.subtle.deriveKey(
+                    {
+                        name: "ECDH",
+                        public: peerECDH
+                    },
+                    myECDHKeyPair.privateKey,
+                    {
+                        name: "AES-GCM",
+                        length: 256
+                    },
+                    false,
+                    ["decrypt"]
+                );
+    
+                const encryptedAESKeyBytes = Uint8Array.from(atob(data.encryptedAESKey), c => c.charCodeAt(0));
+                const iv = Uint8Array.from(atob(data.iv), c => c.charCodeAt(0));
+    
+                // Decrypt the AES key using the derived ECDH key
+                const decryptedAESKeyRaw = await crypto.subtle.decrypt(
+                    { name: "AES-GCM", iv }, // same IV that was used to encrypt it
+                    derivedKey,
+                    encryptedAESKeyBytes
+                );
+    
+                // Import the decrypted AES key
+                const aesKey = await crypto.subtle.importKey(
+                    "raw",
+                    decryptedAESKeyRaw,
+                    { name: "AES-GCM" },
+                    false,
+                    ["decrypt"]
+                );
+    
+                const encryptedMessage = Uint8Array.from(
+                    atob(data.encryptedMessage),
+                    c => c.charCodeAt(0)
+                );            
+    
+                // Decrypt the actual message using the AES key
+                const decrypted = await crypto.subtle.decrypt(
+                    { name: "AES-GCM", iv },
+                    aesKey,
+                    encryptedMessage
+                );
+    
+                const decoder = new TextDecoder();
+                const plaintext = decoder.decode(decrypted);
+    
+                const messageData = {
+                    text: plaintext,
+                    timestamp: data.timestamp,
+                    direction: 'incoming',
+                    from: data.from,
+                    to: myUsername
+                };
+    
+                if (!chatHistory[data.from]) {
+                    addToChatList(data.from);
+                    chatHistory[data.from] = [];
+                }
+    
+                chatHistory[data.from].push(messageData);
+    
+                if (currentChat === data.from || currentChat === null) {
+                    currentChat = data.from;
+                    loadChat(data.from);
+                }
+    
+            } catch (err) {
+                console.error("Failed to verify or decrypt message:", err);
+            }
+        });
+    });
+}
+// Track connection state
+let isConnected = false;
+
+// No persistence of generated keys
 async function generateKeyPairs() {
     // ECDH (key agreement)
     myECDHKeyPair = await crypto.subtle.generateKey(
@@ -159,6 +435,20 @@ async function verifyECDHPublicKey(peerECDHPubBase64, peerSignatureBase64, peerV
         true,
         []
     );
+}
+function getCookie(name) {
+    console.log('All cookies:', document.cookie);
+    const value = `; ${document.cookie}`;
+    const parts = value.split(`; ${name}=`);
+    
+    if (parts.length === 2) {
+        const cookieValue = parts.pop().split(';').shift();
+        console.log(`Found cookie ${name}=${cookieValue}`);
+        return cookieValue;
+    }
+    
+    console.log(`Cookie ${name} not found`);
+    return null;
 }
 
 const recipientInput = document.getElementById("recipient");
@@ -370,125 +660,4 @@ form.addEventListener('submit', async function(e) {
     });
 
     input.value = ''; 
-});
-
-socket.on('chat message', async function(data) {
-    // Fetch and verify the sender's public key bundle
-    socket.emit("get public key bundle", data.from, async (bundle) => {
-        if (!bundle.success) {
-            console.error("Failed to get sender's key bundle");
-            return;
-        }
-
-        try {
-            // Import their Ed25519 public key
-            const rawVerifyKey = Uint8Array.from(atob(bundle.ed25519PublicKey), c => c.charCodeAt(0));
-            const peerVerifyKey = await crypto.subtle.importKey(
-                "raw",
-                rawVerifyKey,
-                { name: "Ed25519" },
-                true,
-                ["verify"]
-            );
-            // Verify signature
-            const reconstructedPayload = {
-                from: data.from,
-                to: data.to,
-                timestamp: data.timestamp,
-                encryptedMessage: data.encryptedMessage,
-                encryptedAESKey: data.encryptedAESKey,
-                iv: data.iv
-            };
-        
-            const payloadBytes = new TextEncoder().encode(JSON.stringify(reconstructedPayload));
-            const signatureBytes = new Uint8Array(data.signature);
-        
-            const isValid = await crypto.subtle.verify(
-                "Ed25519",
-                peerVerifyKey,
-                signatureBytes,
-                payloadBytes
-            );
-        
-            if (!isValid) {
-                console.error("⚠️ Message signature invalid! Possible forgery.");
-                return;
-            }
-
-            // Verify and import ECDH key
-            const peerECDH = await verifyECDHPublicKey(bundle.ecdhPublicKey, bundle.signature, peerVerifyKey);
-
-            // Derive shared AES key using ECDH
-            const derivedKey = await crypto.subtle.deriveKey(
-                {
-                    name: "ECDH",
-                    public: peerECDH
-                },
-                myECDHKeyPair.privateKey,
-                {
-                    name: "AES-GCM",
-                    length: 256
-                },
-                false,
-                ["decrypt"]
-            );
-
-            const encryptedAESKeyBytes = Uint8Array.from(atob(data.encryptedAESKey), c => c.charCodeAt(0));
-            const iv = Uint8Array.from(atob(data.iv), c => c.charCodeAt(0));
-
-            // Decrypt the AES key using the derived ECDH key
-            const decryptedAESKeyRaw = await crypto.subtle.decrypt(
-                { name: "AES-GCM", iv }, // same IV that was used to encrypt it
-                derivedKey,
-                encryptedAESKeyBytes
-            );
-
-            // Import the decrypted AES key
-            const aesKey = await crypto.subtle.importKey(
-                "raw",
-                decryptedAESKeyRaw,
-                { name: "AES-GCM" },
-                false,
-                ["decrypt"]
-            );
-
-            const encryptedMessage = Uint8Array.from(
-                atob(data.encryptedMessage),
-                c => c.charCodeAt(0)
-            );            
-
-            // Decrypt the actual message using the AES key
-            const decrypted = await crypto.subtle.decrypt(
-                { name: "AES-GCM", iv },
-                aesKey,
-                encryptedMessage
-            );
-
-            const decoder = new TextDecoder();
-            const plaintext = decoder.decode(decrypted);
-
-            const messageData = {
-                text: plaintext,
-                timestamp: data.timestamp,
-                direction: 'incoming',
-                from: data.from,
-                to: myUsername
-            };
-
-            if (!chatHistory[data.from]) {
-                addToChatList(data.from);
-                chatHistory[data.from] = [];
-            }
-
-            chatHistory[data.from].push(messageData);
-
-            if (currentChat === data.from || currentChat === null) {
-                currentChat = data.from;
-                loadChat(data.from);
-            }
-
-        } catch (err) {
-            console.error("Failed to verify or decrypt message:", err);
-        }
-    });
 });

@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html>
   <head>
+    <meta name="referrer" content="no-referrer">
     <title>My chat</title>
     <style>
         body { 
@@ -112,7 +113,6 @@
     </style>
   </head>
   <body>
-
     <div id="main-container">
         <div id="auth-container">
             <h2>Welcome!</h2>
@@ -123,6 +123,13 @@
                 <button id="register-btn">Register</button>
                 <button id="login-btn">Login</button>
             </div>
+            <div id="mfaVerification">
+                <img id="qrCode"/>
+                <!-- <label for="mfaCode">Enter 6-digit code</label> -->
+                <input type="text" id="mfaCode" maxlength="6" placeholder="Enter 6-digit code" />
+                <!-- <input type="text" id="mfaCode" maxlength="6" /> -->
+                <button onclick="verifyMfa()">Verify</button>
+              </div>
             <div id="auth-error" class="error-message"></div>
         </div>
         <div id="chat-container" style="display: none;">
