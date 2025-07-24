@@ -1,0 +1,92 @@
+{
+  "user1": {
+    "password": "$2b$12$5cBoDRD/ZvnbUZWmaJM6MeChzuxy1KkUOooyVUeQAxamBWirsQf1S",
+    "mfaSecret": "FUYQEDBSPVFWECCG",
+    "mfaVerified": true,
+    "publicKeys": null
+  },
+  "user2": {
+    "password": "$2b$12$R4C05XZd47u0ttlcA5LLbO35LG7xqv34wN86oxL4aJzMyklzvYhbe",
+    "mfaSecret": "H5DD4AT7MAWBQVDL",
+    "mfaVerified": true,
+    "publicKeys": null
+  },
+  "user3": {
+    "password": "$2b$12$UKo4KS/MR6eJ.Du8nAjxsOI8ar6EgUqEuYtZbMWQyLqRtiQnqHZau",
+    "mfaSecret": "F4FAQL3AEAKEA7RE",
+    "mfaVerified": true,
+    "publicKeys": null
+  },
+  "user4": {
+    "password": "$2b$12$AyzNMe83J/kYiXoXyjqS8u4X4lrBmyrAcqENtDLuG5k1T0hT5s1b.",
+    "mfaSecret": "ANPBCHKMFURH62ZX",
+    "mfaVerified": true,
+    "publicKeys": null
+  },
+  "userA": {
+    "password": "$2b$12$uVycp5/gsFF5oEJL547lbOwYh0DAfm6xcmjn1GVlMQCbpNEOoinBS",
+    "mfaSecret": "AJHDIEQVGBVFCZDR",
+    "mfaVerified": true,
+    "publicKeys": null
+  },
+  "userB": {
+    "password": "$2b$12$tn0D95VITpp7Dx3gF.IrWOhu7/L14uF97pQ4T8QQxtQlCECA1kiDq",
+    "mfaSecret": "I4UFCQZHOY2V4CDM",
+    "mfaVerified": true,
+    "publicKeys": null
+  },
+  "Ann": {
+    "password": "$2b$12$DfB.9zO0xHsnVu5nRu/Uh.aUzWx3U65TATJ.hvY02aHrSsYZzLlpC",
+    "mfaSecret": "JQFGE2B4D4FF6VLU",
+    "mfaVerified": true,
+    "publicKeys": null
+  },
+  "Bob": {
+    "password": "$2b$12$VC2Apm3RAfwcembV6CKbi./LqHopZPqOViWrDwYROdWXR0dD1VzwG",
+    "mfaSecret": "NVQQGNTDK5SAUNCE",
+    "mfaVerified": true,
+    "publicKeys": null
+  },
+  "A": {
+    "password": "$2b$12$4SPSub0TV/lxoI/z2sO6muow5JHUXA5fXzEVHbOKagTCyv6XqDAhy",
+    "mfaSecret": "NYNDYYCMJQAVW2II",
+    "mfaVerified": true,
+    "publicKeys": null
+  },
+  "B": {
+    "password": "$2b$12$Ezy4fo7zgUAhVoA9hitOp.XNA9X1mWBihM.scvqZ1s20IxzjorFpC",
+    "mfaSecret": "CIYHYSCLKAFROHRR",
+    "mfaVerified": true,
+    "publicKeys": null
+  },
+  "hi": {
+    "password": "$2b$12$9jfugjjT7HEzaexhrLor3ergeWVu8PXjJ0xji/wB9aMDryWJxRQgC",
+    "mfaSecret": "PAAF4VRRAZIXWAJG",
+    "mfaVerified": true,
+    "publicKeys": null
+  },
+  "hello": {
+    "password": "$2b$12$bz6g5E6MFVJ3dE7B5OJS3OvZ8IW6IHbu3V9bRmlYkxjCLad4A4nd6",
+    "mfaSecret": "DBOQU7BFEBNHC72R",
+    "mfaVerified": true,
+    "publicKeys": null
+  },
+  "hey": {
+    "password": "$2b$12$7C8s5e1CVUSuzdoCoLfnHOWb.xNSCyUMxtndN/VuVnJHKGhjy28X6",
+    "mfaSecret": "OIKDAJSIL4SX4UCT",
+    "mfaVerified": true,
+    "publicKeys": null
+  },
+  "userOne": {
+    "password": "$2b$12$h6ziSMNYBNtKWgiyFL72D.UKQDZKNPZD2SMNfh3AmppORx2qJKr.K",
+    "mfaSecret": "L5RFG5TGMY7AS5BZ",
+    "mfaVerified": true,
+    "publicKeys": null
+  },
+  "userTwo": {
+    "password": "$2b$12$vN6y51DEDyRlQ844dbom1eCOa3tsj3lcOMMUMYDHxqHrYSPfNUVky",
+    "mfaSecret": "CYZH2DSUDQSRQFTD",
+    "mfaVerified": true,
+    "publicKeys": null
+  }
+}

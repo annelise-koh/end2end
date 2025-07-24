@@ -1,0 +1,77 @@
+{
+  "user1": {
+    "ecdhPublicKey": "BGVWN9ToMXk2NHAwYrXYgKDBWRVAAula92LwRVHMXB9smWKTaSBUWBSDt/utOHvEooK4f2ek8dYwWJ84R97zg0I=",
+    "signature": "LTlbss+GryUObXKWm5W/HmjZAzYp/jmoGX4t0GiAljX/tJx8LwKjyOtA9CLw/KPwcBZtR3wqyAKAKvqfnjhzCw==",
+    "ed25519PublicKey": "ppRJHez2lrzcvTnuCKj2DldX8DRito5FrpzIwZFv3Ow="
+  },
+  "user2": {
+    "ecdhPublicKey": "BOi+jq2gBG9ICmPb7p56ZQq8Hqr/X7LbZDQ6aU7oGemcyaUu5WwBArPhKTTpdP857aH3aWBwAJtfPYpimZBDZRY=",
+    "signature": "sFyjS79W35csGEaUQiCHWMTapXxtBcKVenBBsVgOc6HQG4BKdAAsRz33zTxm+wxW7KqkaOcIp8W8n3fCm7zoDA==",
+    "ed25519PublicKey": "gVbv/DYxL4obzAVxdp8J52DhiYURb5ZQ+LBcJAjJt4E="
+  },
+  "user3": {
+    "ecdhPublicKey": "BJrwnCgJppdAM5P7fgxqC2QHsr6JHER06mTyAoYf3DcacxMjreJ5z72OvKpHV6aJSevJnm1euZ1FyM1FdYpaeMw=",
+    "signature": "CxvU6nNGJrhUwWOsE6Ce7i15VCtPCiP/3oRGYQMKBiPgZMp13azdQsdQHN4AhBrZVM5EYTJ3se4gzvU9OpqJDQ==",
+    "ed25519PublicKey": "ldhqdISBHXnV6YbvUdcfOBYbLFazOsPXzXYUo2xgWBg="
+  },
+  "user4": {
+    "ecdhPublicKey": "BEHIP5sKnMXOwNPT6xi6GS2Lu0TLst6hKToUZnveRqa3G+71zBQAEHLjSLrG5GJqwHutiXCkojvFcGW4jWnJfc4=",
+    "signature": "RtLHT07AbOzU9f2BqkH/5tAVfrxsphQBKQTTeg8+0Gf16Mc7NRG5YEtX9yHb95pIxVhszOLqQC04zrNPP9g1Cw==",
+    "ed25519PublicKey": "XKgFyVFw7msOxG37o+8pOA5+CBknY0VTbgF+ZKPg83w="
+  },
+  "userA": {
+    "ecdhPublicKey": "BH9LaU860NJUM2G8ZAkjGsxKg3ltHzFnGdENfFoBEePBpt5IrmJ4MJqp2Yq9JzjCd7ttAqtPv4Q3uMjusp3sK8Q=",
+    "signature": "nckWgyIZZEdfTobrxcmnKwoME06LWEZ9+YCQp8wH9sXnlwamcgx4vaYQ8Aw5lA30xav9T7IHsLTg+u+km44MAw==",
+    "ed25519PublicKey": "P9y3zb2Pqzalf9MJDylyyuTanG7Lem3EOQMpmOpF8LI="
+  },
+  "userB": {
+    "ecdhPublicKey": "BFhFiTZ9QcMsFnD8KzJcmTU9KMcuCMOnHpb7jJ40MjQsW7P+Uew/+osfdUIhnyPzWe3gFZ/TpRILjUdvV5kT28Q=",
+    "signature": "NlkLXWZi3KBoEnSmKic2dl747rgvY14sXb4K0LNtwdLpd2Fgo8++7c8PfXZGmXKeC0ENgJbJCiXZvozKVJ9sCQ==",
+    "ed25519PublicKey": "siOiOa9ExVPEBsC0i9HZmHrnm1jWGq7MdZxfiFAPMWY="
+  },
+  "Ann": {
+    "ecdhPublicKey": "BEEeeWz46Y0zK6gAowAk/kfA1vxWbA2IdGsSWUx/QKOpxE1wyzo8hzk4K2OGp+40jzzNYWqAwsj+tHdWy9T2sEY=",
+    "signature": "JKd/YqeeyZBcVfxa2Chv7gsjnP/6KGwDTZ24KUxfL1fWWys8h9DnWWU7axVLMUNEJLzSmZs1SbZQ4IGrVO1lAg==",
+    "ed25519PublicKey": "wr3rsJrCDr7PB/Uqp7NEs0e5CbERdFN6gkm9itX1CxI="
+  },
+  "Bob": {
+    "ecdhPublicKey": "BDPz3BptoRp15tp3hr/BESSSyVR56LUBW8s5/jRCJhuyJOGVX3yZ5PSDPU2jFab7u2J8X6bKdEzovWLARdF0yJg=",
+    "signature": "rfdQpkXsYP+WsV3palVaSfWqxfY7WbV3YbYBIILahhuSQRM/ws0V8U3DbhnJgpA0ZhR0H37iEunOByYJlBfBBg==",
+    "ed25519PublicKey": "XX4CF1bouwJZpAXpuNTEOM6IUkGWoqWXK8SZGHCHbTg="
+  },
+  "A": {
+    "ecdhPublicKey": "BJq53tHiqlSVSgz6H04Pp70XWc2Uimu8MkRGdw9L3HntHEDMFF0EBknBqnlAWfRm4qzj97HMKq0Eud+Iq6wWoAY=",
+    "signature": "hVkro32a/HtCoa6eBVps5hlWAzrlWTUMBYi9IfqeV3hottOjpNoWNyzRP+cAwsB26QiKp4JQZ1TDbXrZJSn5Bw==",
+    "ed25519PublicKey": "486wmaGr6ugk5ufUzcksdvTB6TcX72wGuXj0+04fw1g="
+  },
+  "B": {
+    "ecdhPublicKey": "BLxAH2S9e4/DLA4Db3aviJuhrjZRQKOBIRa5672dwzURTPQoi/1ym4yIb7qlYr3ba8BZuyhsOr+KA8P8QUrXBpM=",
+    "signature": "FHCj5ga2AEaVLgpuhoIYzISo4+a+H4wnOABJPMkP+SciAbrWFJ0RXWajkpjRFFji6OAFpXvtm6qCgxSyDEevCQ==",
+    "ed25519PublicKey": "1zki4X5/gEyyPxNt1DyxEIEBInBkBFzhg3ebtX7t3lE="
+  },
+  "hi": {
+    "ecdhPublicKey": "BHmTJmJ4gVKKqvkr9QhPHth2QzkAA5b7psr/nni3K28UQOeyblfVRe7Y2xJuNwnkmIE6/5aAv+GgfvTl/uKIGTY=",
+    "signature": "SNZgQw41AYG8aer7MxEzP2OAlROZ5Gw680b6wqVgBDclfNyEl9bxg9t+K//aqFlGWwL0UNPJo47ELHR5rnPACg==",
+    "ed25519PublicKey": "eAxjklNBvoACTBBzm6t2OPhKZ556blZmhdmiwVPDM5c="
+  },
+  "hello": {
+    "ecdhPublicKey": "BLHqnp5zL5XITeV+Ns1g+ihfMdxH/g75Aiv9DcwVR0jK7/foC2fly+uu8ZX7jYHsbbtt2MnhGg4kkNJvpzPG2Bs=",
+    "signature": "lcwYBy8aulaCYqe6fA7/ucO/YZSLq9exl7BTuo201W2v877FvSgWeayOOVGbZhHqsgV868ckYIMyTGdE0TEEAw==",
+    "ed25519PublicKey": "rdKgBjxcidvWSgInMZb4SUIcUa23MjAjzLXZa+79QP8="
+  },
+  "hey": {
+    "ecdhPublicKey": "BA1Zo+tOoWe01ff/LjyvSDyxzFZSNihyKLN3M867lg7KyF/w/U/K1I8PlOtJ+AmFeWI5AnyDkI0vXRiioHYtKog=",
+    "signature": "7L4fkKN4AVE+kcHf4iz6rsM7tge/IW3RmQSxD32fwUTU4IJICST2cXKEmSaXjykeyw1tMxp8zXPDglqbr5AnAg==",
+    "ed25519PublicKey": "L5CO5rmHoO2F3PO2pLsVtGQWBITehzWNmWLVnGDFZwg="
+  },
+  "userOne": {
+    "ecdhPublicKey": "BHnYCEgkg5KaH5CjK3YE7unrgm2nycnwHpfrtYlNGmwPmd+IiWGJgZxOGYt5zMn5uxGGoajrP+6BeMM+bPHTNK0=",
+    "signature": "B+EhEN4kJXq2axo53zadJgW4CUwW8gCwSKKm5J8nOpepcqG0/21WP4BNc78wsUOlbDwvVOT7WXwQxTuGacCJBw==",
+    "ed25519PublicKey": "RC08KH1w5KeUZeIilVmtb/0bl8Vo5yTePjDQOQm5uos="
+  },
+  "userTwo": {
+    "ecdhPublicKey": "BBMVgKy8+h8mZRkgRJmZzgwQsOMlfi3OanxLyDRObFusBQApxPUM9sLFY+iIKKcrwTNBgF+t145CEhbqEM2ScMI=",
+    "signature": "2lNmcv0TPYNVviAjpX6cgPbj80bMTlQyl46E/tD7qrWO+QA5hm4JYJqdtA2+LueKeWoq4UbkupTBfloxIr65AQ==",
+    "ed25519PublicKey": "EIKR8Bb6nUFiE8CxD22LGAr9HcNpMSgoqw9qxY106WY="
+  }
+}
